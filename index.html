@@ -15,6 +15,16 @@
             --todoist-divider: #f0f0f0;
         }
 
+        /* Remove the gray highlight box on iOS */
+        .date-item, 
+        .nav-item, 
+        .fab, 
+        .check-circle, 
+        .material-icons {
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer; /* Good practice for interactive elements */
+        }
+
         /* Prevent iPhone Bounce and Page Scroll */
         html, body {
             margin: 0; padding: 0;
