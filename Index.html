@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Habits</title>
     <style>
         :root {
@@ -13,7 +15,7 @@
             --todoist-divider: #f0f0f0;
         }
 
-        /* Prevent the entire page from bouncing or scrolling */
+        /* Prevent iPhone Bounce and Page Scroll */
         html, body {
             margin: 0; padding: 0;
             height: 100%; width: 100%;
@@ -23,7 +25,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
         }
 
-        /* FLEXBOX SHELL */
+        /* Flexbox Shell: Fixed Top/Bottom, Scrolling Middle */
         .app-shell {
             display: flex;
             flex-direction: column;
@@ -116,10 +118,12 @@
         </div>
 
         <div class="main-content" id="habitList">
-            </div>
+            <p style="text-align:center; color:#999; margin-top:50px;">Loading your habits...</p>
+        </div>
 
         <div class="main-content hidden" id="statsPage">
             <h2 style="padding-top:20px">Statistics</h2>
+            <p>Coming soon...</p>
         </div>
 
         <div class="footer-tabs">
@@ -137,7 +141,55 @@
     </div>
 
     <script>
-        // DATE LOGIC
+        // REPLACE WITH YOUR ACTUAL DEPLOYED GOOGLE SCRIPT URL
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/XXXXX/exec";
+
+        // 1. DATA SYNC: Fetch from Google Sheets
+        async function loadHabits() {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const habits = await response.json();
+                const container = document.getElementById('habitList');
+                container.innerHTML = ""; 
+                
+                habits.forEach(h => {
+                    renderHabitRow(h[0]); // Column A: Habit Name
+                });
+            } catch (e) {
+                document.getElementById('habitList').innerHTML = "Error loading habits.";
+            }
+        }
+
+        async function addNewHabit() {
+            const name = prompt("Habit name:");
+            if (!name) return;
+
+            renderHabitRow(name); // Immediate UI update
+
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors", // Required for some Apps Script triggers
+                body: JSON.stringify({ name: name }),
+            });
+        }
+
+        function renderHabitRow(name) {
+            const row = document.createElement('div');
+            row.className = 'habit-row';
+            row.innerHTML = `
+                <div class="check-circle" onclick="toggleCheck(this)"></div>
+                <div style="flex:1">${name}</div>
+                <i class="material-icons" style="color:#ddd">more_horiz</i>
+            `;
+            document.getElementById('habitList').appendChild(row);
+        }
+
+        function toggleCheck(el) {
+            el.classList.toggle('completed');
+            el.innerHTML = el.classList.contains('completed') ? '<i class="material-icons" style="font-size:14px">done</i>' : '';
+        }
+
+        // 2. UI LOGIC: Dates & Tabs
         function initDates(baseDate = new Date()) {
             const bar = document.getElementById('dateBar');
             bar.innerHTML = '';
@@ -169,7 +221,6 @@
                 (date.toDateString() === today) ? "Today" : date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
         }
 
-        // NAVIGATION
         function switchTab(tab) {
             const isH = tab === 'habits';
             document.getElementById('habitList').classList.toggle('hidden', !isH);
@@ -178,26 +229,10 @@
             document.getElementById('tabS').classList.toggle('active', !isH);
         }
 
-        // HABIT ACTIONS
-        function addNewHabit() {
-            const name = prompt("Habit name:");
-            if(!name) return;
-            const row = document.createElement('div');
-            row.className = 'habit-row';
-            row.innerHTML = `
-                <div class="check-circle" onclick="toggleCheck(this)"></div>
-                <div style="flex:1">${name}</div>
-                <i class="material-icons" style="color:#ddd">more_horiz</i>
-            `;
-            document.getElementById('habitList').appendChild(row);
-        }
-
-        function toggleCheck(el) {
-            el.classList.toggle('completed');
-            el.innerHTML = el.classList.contains('completed') ? '<i class="material-icons" style="font-size:14px">done</i>' : '';
-        }
-
-        window.onload = () => initDates();
+        window.onload = () => {
+            initDates();
+            loadHabits();
+        };
     </script>
 </body>
 </html>
