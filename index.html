@@ -113,6 +113,18 @@
 
         #nativeDatePicker { position: absolute; opacity: 0; pointer-events: none; }
         .hidden { display: none; }
+
+        /* Add this to the bottom of your <style> section */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none; /* Prevents the "Copy/Paste" menu on long press */
+        }
+        
+        .date-item:active, .nav-item:active, .fab:active {
+            opacity: 0.6; /* Subtle feedback so it feels responsive */
+            transform: scale(0.95);
+            transition: transform 0.1s;
+        }
     </style>
 </head>
 <body>
