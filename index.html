@@ -141,6 +141,85 @@
     </div>
 
     <script>
+        // 1. Storage Keys
+        const STORAGE_KEY = "my_habits_data";
+        const LOGIN_KEY = "is_user_logged_in";
+        
+        // 2. Load Habits (Local First, then Cloud)
+        async function loadHabits() {
+            const container = document.getElementById('habitList');
+            
+            // Check LocalStorage first for instant loading
+            const cachedData = localStorage.getItem(STORAGE_KEY);
+            if (cachedData) {
+                renderAll(JSON.parse(cachedData));
+            }
+        
+            // Then, fetch the latest from Google in the background
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const freshData = await response.json();
+                
+                // Update LocalStorage with the fresh data
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
+                
+                // Refresh UI only if data changed
+                renderAll(freshData);
+            } catch (e) {
+                console.log("Offline mode: using cached habits.");
+            }
+        }
+        
+        function renderAll(habits) {
+            const container = document.getElementById('habitList');
+            container.innerHTML = ""; 
+            habits.forEach(h => renderHabitRow(h[0]));
+        }
+        
+        // 3. Save a new habit
+        async function addNewHabit() {
+            const name = prompt("Habit name:");
+            if (!name) return;
+        
+            // 1. Update UI
+            renderHabitRow(name);
+        
+            // 2. Update Local Cache
+            const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+            current.push([name, "Active"]);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+        
+            // 3. Send to Google Sheets
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                body: JSON.stringify({ name: name }),
+            });
+        }
+        
+        // 4. Stay Logged In Logic
+        function checkLogin() {
+            const isLoggedIn = localStorage.getItem(LOGIN_KEY);
+            if (isLoggedIn === "true") {
+                document.getElementById('habitList').style.display = 'block';
+            } else {
+                // For now, let's just "simulate" a login
+                const pin = prompt("Enter your private PIN to access habits:");
+                if (pin === "1234") { // You can change this!
+                    localStorage.setItem(LOGIN_KEY, "true");
+                } else {
+                    alert("Wrong PIN");
+                    window.location.reload();
+                }
+            }
+        }
+        
+        window.onload = () => {
+            initDates();
+            checkLogin();
+            loadHabits();
+        };
+        
         // REPLACE WITH YOUR ACTUAL DEPLOYED GOOGLE SCRIPT URL
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/XXXXX/exec";
 
