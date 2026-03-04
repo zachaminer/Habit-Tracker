@@ -30,20 +30,11 @@
             <p>Coming soon...</p>
         </div>
 
-        <!-- New section for adding a habit (Moved inside app-shell) -->
-        <div class="main-content hidden" id="addHabitPage">
-            <h2 style="padding-top:20px; text-align:center;">Add New Habit</h2>
-            <div class="add-habit-form">
-                <input type="text" id="newHabitName" placeholder="Enter habit name" class="habit-input">
-                <button onclick="addNewHabitFromForm()" class="add-habit-button">Add Habit</button>
-            </div>
-        </div>
-
         <div class="footer-tabs">
             <div class="nav-item active" id="tabH" onclick="switchTab('habits')">
                 <i class="material-icons">checklist</i>Habits
             </div>
-            <div class="nav-item" id="tabAdd" onclick="switchTab('add')">
+            <div class="nav-item" id="tabAdd" onclick="toggleAddHabitPopup()">
                 <i class="material-icons">add</i>
             </div>
             <div class="nav-item" id="tabS" onclick="switchTab('stats')">
@@ -69,6 +60,15 @@
         <div class="calendar-days" id="calendarDays"></div>
     </div>
 
-    <script src="script.js"></script>
-</body>
-</html>
+    <!-- Add Habit Full Screen Popup -->
+    <div id="addHabitPopup" class="full-screen-popup">
+        <div class="popup-header">
+            <span onclick="toggleAddHabitPopup()" style="cursor:pointer; color:var(--todoist-muted)">Cancel</span>
+            <span style="font-weight:700; font-size:18px;">New Habit</span>
+            <span onclick="addNewHabitFromForm()" style="cursor:pointer; color:var(--todoist-red); font-weight:600;">Save</span>
+        </div>
+        
+        <div class="popup-content">
+            <!-- Name -->
+            <div class="form-group">
+       
