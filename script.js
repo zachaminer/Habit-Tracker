@@ -8,6 +8,7 @@ let currentCalendarDate = new Date(); // For calendar view
 let selectedDate = new Date(); // For the currently active date in the date bar
 let selectedColor = "#E44332"; // Default color
 let datePickerTarget = null; // 'startDate', 'endDate', or null (default)
+let editingHabitIndex = -1; // Track which habit is being edited
 
 // 2. Initialization
 window.addEventListener('DOMContentLoaded', () => {
@@ -62,10 +63,28 @@ async function loadHabits() {
 function renderAll(habits) {
     const container = document.getElementById('habitList');
     container.innerHTML = ""; 
-    habits.forEach(h => {
-        // Handle both old array format [name, status] and new object format
-        const name = Array.isArray(h) ? h[0] : h.name;
-        renderHabitRow(name);
+    
+    const dateKey = getDateKey(selectedDate);
+
+    // 1. Map to enrich data with index and status
+    const mapped = habits.map((h, index) => {
+        let habit = h;
+        if (Array.isArray(h)) {
+            habit = { name: h[0], status: h[1], color: "#E44332", frequency: 'daily' };
+        }
+        const isCompleted = habit.history && habit.history[dateKey] === true;
+        return { ...habit, originalIndex: index, isCompleted };
+    });
+
+    // 2. Sort: Uncompleted first, then by original index (to preserve manual order)
+    mapped.sort((a, b) => {
+        if (a.isCompleted === b.isCompleted) return a.originalIndex - b.originalIndex;
+        return a.isCompleted ? 1 : -1; // Completed goes to bottom
+    });
+
+    // 3. Render
+    mapped.forEach(habit => {
+        renderHabitRow(habit, habit.originalIndex);
     });
 }
 
@@ -79,7 +98,7 @@ async function addNewHabitFromForm() {
     if (!name) { alert("Habit name cannot be empty."); return; }
 
     // Gather new fields
-    const frequency = document.getElementById('frequencySelect').value;
+    const frequency = document.getElementById('frequencyValue').value;
     const startDate = document.getElementById('startDate').dataset.value; // Use data attribute for ISO date
     const hasEnd = document.getElementById('hasEndDate').checked;
     const endDate = hasEnd ? document.getElementById('endDate').dataset.value : null;
@@ -103,13 +122,18 @@ async function addNewHabitFromForm() {
         status: "Active"
     };
 
-    // 1. Update UI immediately
-    renderHabitRow(name);
-
-    // 2. Update Local Cache
+    // 1. Update Local Cache
     const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    // Store full object now, but keep backward compatibility if needed by checking type in render
-    current.push(habitData);
+    
+    if (editingHabitIndex >= 0) {
+        // Update existing
+        current[editingHabitIndex] = habitData;
+        editingHabitIndex = -1; // Reset
+    } else {
+        // Create new
+        current.push(habitData);
+    }
+    
     localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
 
     // 3. Send to Google Sheets
@@ -123,6 +147,9 @@ async function addNewHabitFromForm() {
         console.error("Failed to sync new habit to cloud.");
     }
     nameInput.value = ''; // Clear the input
+    
+    // Re-render all to show changes
+    renderAll(current);
     toggleAddHabitPopup(); // Close popup
 }
 
@@ -132,10 +159,16 @@ function toggleAddHabitPopup() {
     
     // Reset form defaults when opening
     if (popup.classList.contains('active')) {
-        // Set default start date to today
-        updateDateInput('startDate', new Date());
-        document.getElementById('hasEndDate').checked = false;
-        toggleEndDate(); // Hide end date input
+        if (editingHabitIndex === -1) {
+            // New Habit Mode
+            document.getElementById('newHabitName').value = '';
+            updateDateInput('startDate', new Date());
+            document.getElementById('hasEndDate').checked = false;
+            selectFrequency('daily'); 
+            selectColor(document.querySelector('.color-circle'), "#E44332");
+            toggleEndDate(); 
+        }
+        // If editing, fields are already populated by openEditModal
     }
 }
 
@@ -145,14 +178,16 @@ function selectColor(el, color) {
     selectedColor = color;
 }
 
-function toggleDaySelection() {
-    const val = document.getElementById('frequencySelect').value;
+function selectFrequency(val) {
+    document.getElementById('frequencyValue').value = val;
+    
+    document.querySelectorAll('.segment-btn').forEach(el => {
+        el.classList.toggle('active', el.dataset.val === val);
+    });
+
     const daySelector = document.getElementById('daySelection');
-    if (val === 'weekly') {
-        daySelector.classList.remove('hidden');
-    } else {
-        daySelector.classList.add('hidden');
-    }
+    if (val === 'weekly') daySelector.classList.remove('hidden');
+    else daySelector.classList.add('hidden');
 }
 
 function toggleDay(el) {
@@ -183,21 +218,160 @@ function toggleEndDate() {
     else dateInput.classList.add('hidden');
 }
 
-function renderHabitRow(name) {
+function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getDateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function renderHabitRow(habit, index) {
+    const name = habit.name || habit; // Fallback
+    const color = habit.color || "#E44332";
+    const isCompleted = habit.isCompleted;
+    
     const row = document.createElement('div');
     row.className = 'habit-row';
+    
+    // Swipe Actions (Background)
+    const actions = document.createElement('div');
+    actions.className = 'habit-actions';
+    
+    // Move Up
+    actions.innerHTML += `<div class="action-btn" onclick="moveHabit(${index}, -1)"><i class="material-icons" style="color:#555">arrow_upward</i></div>`;
+    // Move Down
+    actions.innerHTML += `<div class="action-btn" onclick="moveHabit(${index}, 1)"><i class="material-icons" style="color:#555">arrow_downward</i></div>`;
+    // Edit
+    actions.innerHTML += `<div class="action-btn" onclick="openEditModalFromRow(${index})"><i class="material-icons" style="color:#555">edit</i></div>`;
+
+    // Card Content (Foreground)
+    const card = document.createElement('div');
+    card.className = 'habit-card';
+    
+    // Dynamic Styling
+    if (isCompleted) {
+        card.style.borderColor = color;
+        card.style.opacity = "0.8";
+    } else {
+        // Lighter border when unchecked
+        card.style.borderColor = hexToRgba(color, 0.3);
+    }
+
+    const checkStyle = isCompleted ? `background:${color}; border-color:${color}` : `border-color:#d1d1d1`;
+
     row.innerHTML = `
-        <div class="check-circle" onclick="toggleCheck(this)"></div>
-        <div style="flex:1">${name}</div>
-        <i class="material-icons" style="color:#ddd">more_horiz</i>
     `;
+    
+    card.innerHTML = `
+        <div class="check-circle ${isCompleted ? 'completed' : ''}" id="check-${index}" style="${checkStyle}">
+            <i class="material-icons">done</i>
+        </div>
+        <div style="flex:1; font-weight:500;">${name}</div>
+    `;
+
+    // Swipe Logic
+    let startX = 0;
+    let currentTranslate = 0;
+    let isDragging = false;
+
+    card.addEventListener('touchstart', e => {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+        card.style.transition = 'none'; // Disable transition for direct 1:1 movement
+    }, {passive: true});
+
+    card.addEventListener('touchmove', e => {
+        if (!isDragging) return;
+        const currentX = e.touches[0].clientX;
+        const diff = currentX - startX;
+        // Only allow sliding left (negative diff)
+        if (diff < 0 && diff > -100) {
+            card.style.transform = `translateX(${diff}px)`;
+            currentTranslate = diff;
+        }
+    }, {passive: true});
+
+    card.addEventListener('touchend', () => {
+        isDragging = false;
+        card.style.transition = 'transform 0.2s ease-out';
+        
+        if (currentTranslate < -50) {
+            // Snap open (reveal edit)
+            card.style.transform = `translateX(-80px)`;
+        } else {
+            // Snap back (close) or treat as click
+            card.style.transform = `translateX(0)`;
+            if (Math.abs(currentTranslate) < 5) {
+                toggleCheck(index);
+            }
+        }
+        currentTranslate = 0;
+    });
+
+    row.appendChild(actions);
+    row.appendChild(card);
     document.getElementById('habitList').appendChild(row);
 }
 
-function toggleCheck(el) {
-    el.classList.toggle('completed');
-    el.innerHTML = el.classList.contains('completed') ? 
-        '<i class="material-icons" style="font-size:14px">done</i>' : '';
+function openEditModalFromRow(index) {
+    const habits = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    openEditModal(habits[index], index);
+}
+
+function openEditModal(habit, index) {
+    editingHabitIndex = index;
+    document.getElementById('newHabitName').value = habit.name;
+    selectFrequency(habit.frequency || 'daily');
+    // Select color logic could be improved to find the matching circle
+    if (habit.color) selectedColor = habit.color;
+    selectColor(document.querySelector(`.color-circle[style*="${selectedColor}"]`) || document.querySelector('.color-circle'), selectedColor);
+    
+    toggleAddHabitPopup();
+}
+
+function toggleCheck(index) {
+    const habits = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const habit = habits[index];
+    if (!habit) return;
+
+    if (!habit.history) habit.history = {};
+    const dateKey = getDateKey(selectedDate);
+    
+    // Toggle status
+    habit.history[dateKey] = !habit.history[dateKey];
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+    renderAll(habits);
+}
+
+function moveHabit(index, direction) {
+    const habits = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const dateKey = getDateKey(selectedDate);
+    const currentHabit = habits[index];
+    const currentStatus = !!(currentHabit.history && currentHabit.history[dateKey]);
+
+    // Find the nearest neighbor with the SAME status to swap with
+    let targetIndex = index + direction;
+    while (targetIndex >= 0 && targetIndex < habits.length) {
+        const targetHabit = habits[targetIndex];
+        const targetStatus = !!(targetHabit.history && targetHabit.history[dateKey]);
+        
+        if (targetStatus === currentStatus) {
+            // Found a valid swap target
+            [habits[index], habits[targetIndex]] = [habits[targetIndex], habits[index]];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+            renderAll(habits);
+            return;
+        }
+        targetIndex += direction;
+    }
 }
 
 // 5. UI Logic (Dates & Tabs)
