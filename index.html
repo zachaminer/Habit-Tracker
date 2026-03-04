@@ -2,130 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Habits</title>
-    <style>
-        :root {
-            --todoist-red: #E44332; 
-            --todoist-text: #202020;
-            --todoist-muted: #808080;
-            --todoist-divider: #f0f0f0;
-        }
-
-        /* Remove the gray highlight box on iOS */
-        .date-item, 
-        .nav-item, 
-        .fab, 
-        .check-circle, 
-        .material-icons {
-            -webkit-tap-highlight-color: transparent;
-            cursor: pointer; /* Good practice for interactive elements */
-        }
-
-        /* Prevent iPhone Bounce and Page Scroll */
-        html, body {
-            margin: 0; padding: 0;
-            height: 100%; width: 100%;
-            overflow: hidden;
-            position: fixed; 
-            background: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-        }
-
-        /* Flexbox Shell: Fixed Top/Bottom, Scrolling Middle */
-        .app-shell {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-        }
-
-        /* FIXED HEADER */
-        .header-section {
-            flex: 0 0 auto;
-            padding-top: env(safe-area-inset-top);
-            background: #fff;
-            z-index: 10;
-        }
-
-        .header-top {
-            padding: 15px 20px 5px 20px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .header-title { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
-
-        .date-scroller { 
-            display: flex; overflow-x: auto; padding: 10px 15px; gap: 18px;
-            border-bottom: 1px solid var(--todoist-divider);
-            -webkit-overflow-scrolling: touch;
-        }
-        .date-scroller::-webkit-scrollbar { display: none; }
-        .date-item { text-align: center; min-width: 32px; padding-bottom: 8px; border-bottom: 2px solid transparent; }
-        .date-item span { display: block; font-size: 10px; color: var(--todoist-muted); font-weight: 600; text-transform: uppercase; }
-        .date-item strong { font-size: 16px; font-weight: 500; }
-        .date-item.active { border-bottom-color: var(--todoist-red); color: var(--todoist-red); }
-
-        /* SCROLLABLE MAIN CONTENT */
-        .main-content {
-            flex: 1 1 auto;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 0 20px 100px 20px;
-        }
-
-        .habit-row { 
-            display: flex; align-items: center; padding: 18px 0; 
-            border-bottom: 1px solid var(--todoist-divider);
-        }
-        .check-circle { 
-            width: 22px; height: 22px; border: 1.5px solid #d1d1d1; 
-            border-radius: 50%; margin-right: 15px; flex-shrink: 0; 
-        }
-        .check-circle.completed { background: var(--todoist-red); border-color: var(--todoist-red); color: white; display: flex; align-items: center; justify-content: center;}
-
-        /* FIXED FOOTER TABS */
-        .footer-tabs {
-            flex: 0 0 auto;
-            height: calc(60px + env(safe-area-inset-bottom));
-            background: #fff;
-            border-top: 1px solid var(--todoist-divider);
-            display: flex; justify-content: space-around;
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-        .nav-item { flex: 1; text-align: center; color: var(--todoist-muted); font-size: 10px; padding-top: 10px; }
-        .nav-item.active { color: var(--todoist-red); }
-        .nav-item i { font-size: 26px; display: block; margin-bottom: 2px; }
-
-        /* FLOATING ACTION BUTTON */
-        .fab {
-            position: fixed;
-            bottom: calc(80px + env(safe-area-inset-bottom));
-            right: 20px;
-            background: var(--todoist-red);
-            color: white; width: 56px; height: 56px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 99;
-        }
-
-        #nativeDatePicker { position: absolute; opacity: 0; pointer-events: none; }
-        .hidden { display: none; }
-
-        /* Add this to the bottom of your <style> section */
-        * {
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none; /* Prevents the "Copy/Paste" menu on long press */
-        }
-        
-        .date-item:active, .nav-item:active, .fab:active {
-            opacity: 0.6; /* Subtle feedback so it feels responsive */
-            transform: scale(0.95);
-            transition: transform 0.1s;
-        }
-    </style>
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -133,9 +16,8 @@
         <div class="header-section">
             <div class="header-top">
                 <div class="header-title" id="currentDateLabel">Today</div>
-                <i class="material-icons" style="color:var(--todoist-muted)" onclick="document.getElementById('nativeDatePicker').showPicker()">calendar_today</i>
+                <i class="material-icons" style="color:var(--todoist-muted)" onclick="toggleCalendarPopup()">calendar_today</i>
             </div>
-            <input type="date" id="nativeDatePicker" onchange="jumpToDate(this.value)">
             <div class="date-scroller" id="dateBar"></div>
         </div>
 
@@ -148,9 +30,21 @@
             <p>Coming soon...</p>
         </div>
 
+        <!-- New section for adding a habit (Moved inside app-shell) -->
+        <div class="main-content hidden" id="addHabitPage">
+            <h2 style="padding-top:20px; text-align:center;">Add New Habit</h2>
+            <div class="add-habit-form">
+                <input type="text" id="newHabitName" placeholder="Enter habit name" class="habit-input">
+                <button onclick="addNewHabitFromForm()" class="add-habit-button">Add Habit</button>
+            </div>
+        </div>
+
         <div class="footer-tabs">
             <div class="nav-item active" id="tabH" onclick="switchTab('habits')">
                 <i class="material-icons">checklist</i>Habits
+            </div>
+            <div class="nav-item" id="tabAdd" onclick="switchTab('add')">
+                <i class="material-icons">add</i>
             </div>
             <div class="nav-item" id="tabS" onclick="switchTab('stats')">
                 <i class="material-icons">bar_chart</i>Stats
@@ -158,183 +52,23 @@
         </div>
     </div>
 
-    <div class="fab" onclick="addNewHabit()">
-        <i class="material-icons">add</i>
+    <!-- Custom Calendar Popup (Moved to body for better visibility) -->
+    <div id="calendarPopup" class="calendar-popup">
+        <div class="calendar-header">
+            <span class="today-btn" onclick="goToToday()">Today</span>
+            <div class="calendar-nav">
+                <i class="material-icons" onclick="changeMonth(-1)">chevron_left</i>
+                <span id="currentMonthYear"></span>
+                <i class="material-icons" onclick="changeMonth(1)">chevron_right</i>
+            </div>
+            <i class="material-icons close-btn" onclick="toggleCalendarPopup()">close</i>
+        </div>
+        <div class="calendar-weekdays">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="calendar-days" id="calendarDays"></div>
     </div>
 
-    <script>
-        // 1. Storage Keys
-        const STORAGE_KEY = "my_habits_data";
-        const LOGIN_KEY = "is_user_logged_in";
-        
-        // 2. Load Habits (Local First, then Cloud)
-        async function loadHabits() {
-            const container = document.getElementById('habitList');
-            
-            // Check LocalStorage first for instant loading
-            const cachedData = localStorage.getItem(STORAGE_KEY);
-            if (cachedData) {
-                renderAll(JSON.parse(cachedData));
-            }
-        
-            // Then, fetch the latest from Google in the background
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL);
-                const freshData = await response.json();
-                
-                // Update LocalStorage with the fresh data
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
-                
-                // Refresh UI only if data changed
-                renderAll(freshData);
-            } catch (e) {
-                console.log("Offline mode: using cached habits.");
-            }
-        }
-        
-        function renderAll(habits) {
-            const container = document.getElementById('habitList');
-            container.innerHTML = ""; 
-            habits.forEach(h => renderHabitRow(h[0]));
-        }
-        
-        // 3. Save a new habit
-        async function addNewHabit() {
-            const name = prompt("Habit name:");
-            if (!name) return;
-        
-            // 1. Update UI
-            renderHabitRow(name);
-        
-            // 2. Update Local Cache
-            const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-            current.push([name, "Active"]);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-        
-            // 3. Send to Google Sheets
-            await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                body: JSON.stringify({ name: name }),
-            });
-        }
-        
-        // 4. Stay Logged In Logic
-        function checkLogin() {
-            const isLoggedIn = localStorage.getItem(LOGIN_KEY);
-            if (isLoggedIn === "true") {
-                document.getElementById('habitList').style.display = 'block';
-            } else {
-                // For now, let's just "simulate" a login
-                const pin = prompt("Enter your private PIN to access habits:");
-                if (pin === "1234") { // You can change this!
-                    localStorage.setItem(LOGIN_KEY, "true");
-                } else {
-                    alert("Wrong PIN");
-                    window.location.reload();
-                }
-            }
-        }
-        
-        window.onload = () => {
-            initDates();
-            checkLogin();
-            loadHabits();
-        };
-        
-        // REPLACE WITH YOUR ACTUAL DEPLOYED GOOGLE SCRIPT URL
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/XXXXX/exec";
-
-        // 1. DATA SYNC: Fetch from Google Sheets
-        async function loadHabits() {
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL);
-                const habits = await response.json();
-                const container = document.getElementById('habitList');
-                container.innerHTML = ""; 
-                
-                habits.forEach(h => {
-                    renderHabitRow(h[0]); // Column A: Habit Name
-                });
-            } catch (e) {
-                document.getElementById('habitList').innerHTML = "Error loading habits.";
-            }
-        }
-
-        async function addNewHabit() {
-            const name = prompt("Habit name:");
-            if (!name) return;
-
-            renderHabitRow(name); // Immediate UI update
-
-            await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors", // Required for some Apps Script triggers
-                body: JSON.stringify({ name: name }),
-            });
-        }
-
-        function renderHabitRow(name) {
-            const row = document.createElement('div');
-            row.className = 'habit-row';
-            row.innerHTML = `
-                <div class="check-circle" onclick="toggleCheck(this)"></div>
-                <div style="flex:1">${name}</div>
-                <i class="material-icons" style="color:#ddd">more_horiz</i>
-            `;
-            document.getElementById('habitList').appendChild(row);
-        }
-
-        function toggleCheck(el) {
-            el.classList.toggle('completed');
-            el.innerHTML = el.classList.contains('completed') ? '<i class="material-icons" style="font-size:14px">done</i>' : '';
-        }
-
-        // 2. UI LOGIC: Dates & Tabs
-        function initDates(baseDate = new Date()) {
-            const bar = document.getElementById('dateBar');
-            bar.innerHTML = '';
-            for(let i = -2; i <= 8; i++) {
-                const d = new Date(baseDate);
-                d.setDate(d.getDate() + i);
-                const item = document.createElement('div');
-                item.className = 'date-item' + (i === 0 ? ' active' : '');
-                item.onclick = () => {
-                    document.querySelectorAll('.date-item').forEach(el => el.classList.remove('active'));
-                    item.classList.add('active');
-                    updateTitle(d);
-                };
-                item.innerHTML = `<span>${d.toLocaleDateString('en-US',{weekday:'short'})}</span><strong>${d.getDate()}</strong>`;
-                bar.appendChild(item);
-            }
-        }
-
-        function jumpToDate(val) {
-            if(!val) return;
-            const newDate = new Date(val + "T00:00:00");
-            initDates(newDate);
-            updateTitle(newDate);
-        }
-
-        function updateTitle(date) {
-            const today = new Date().toDateString();
-            document.getElementById('currentDateLabel').innerText = 
-                (date.toDateString() === today) ? "Today" : date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-        }
-
-        function switchTab(tab) {
-            const isH = tab === 'habits';
-            document.getElementById('habitList').classList.toggle('hidden', !isH);
-            document.getElementById('statsPage').classList.toggle('hidden', isH);
-            document.getElementById('tabH').classList.toggle('active', isH);
-            document.getElementById('tabS').classList.toggle('active', !isH);
-        }
-
-        window.onload = () => {
-            initDates();
-            checkLogin(); // Make sure this is included if you want the PIN prompt!
-            loadHabits();
-        };
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
